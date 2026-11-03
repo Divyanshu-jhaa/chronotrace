@@ -1,0 +1,73 @@
+# Proposal: Iteration 7 — Model Client and Evidence-First Agent
+
+## Why
+
+ChronoTrace has deterministic analytics (Iteration 5) and a validated MCP server exposing five tools (Iteration 6), but no way to turn a natural-language repository question into an evidence-grounded answer. Without a provider-isolated Meta Model API Muse Spark client, an MCP client, and a bounded tool-calling loop governed by evidence-first prompts, the system cannot answer representative questions without inventing scores, relationships, or commit evidence — violating the non-negotiable principle that every factual claim must be traceable to tool output (PLAN §2.2).
+
+Iteration 7 delivers the model integration and agent orchestration as the sole LLM layer, so downstream API (Iteration 8), CLI (Iteration 10), and UI (Iteration 11) can offer chat grounded in returned evidence.
+
+## What Changes
+
+- **Provider documentation verification** — Verify current Meta Model API base URL, endpoint path, authentication header, supported `muse-spark` model identifier (default `muse-spark-1.3` per `chronotrace.yml` `agent.model`), tool-call format (function/tool JSON), streaming vs non-streaming invocation, and supported reasoning controls (`reasoning_effort`: `low`/`medium`/`high`) against current official Meta documentation before coding; record verified values in code comments/docs and fail closed if assumptions are stale.
+- **Provider client isolated from orchestration** — Create `src/chronotrace/agent/model_client.py` (or `src/chronotrace/core/agent/model_client.py` per PLAN §4 layout) as a thin, stateless client wrapping `httpx` (already in `pyproject.toml`) for the Meta Model API Muse Spark endpoint. Reads `base_url`, `api_key` (`MODEL_API_KEY` env, never hard-coded, never YAML), `model` name, `reasoning_effort`, timeout, and retry settings from the Iteration 1 validated configuration/environment object. Exposes `chat( messages, tools, ... ) -> ModelResponse` with typed request/response models (Pydantic), handles auth header, JSON serialization per provider spec, and maps HTTP 401/403/429/5xx/timeouts to typed domain errors. No agent logic, no MCP calls, no prompt construction inside this module.
+- **MCP client** — Create `src/chronotrace/agent/mcp_client.py` connecting the agent to the Iteration 6 MCP server via the Python MCP SDK over Streamable HTTP. Reuses validated `mcp.host`/`port` (or `graph`/`mcp` config) and verifies the real transport route from a shared constant (not an assumed URL). Exposes `list_tools()`, `call_tool(name, arguments) -> ToolResult`, connection lifecycle (`connect`/`close`), and structured error mapping (`not_found`, `validation_error`, `graph_unavailable`, transport failure) so the tool loop never imports Neo4j or analytics directly.
+- **Tool definitions supplied to the model** — Translate the five MCP tool schemas (`get_change_criticality`, `get_regression_risk`, `get_historical_impact`, `recommend_tests`, `get_file_history`) into the provider-required function/tool definition format (e.g., OpenAI-compatible `tools: [{type:"function", function:{name,description,parameters}}]` or Muse Spark equivalent). Schemas include `repository_id` (string), `file_path` (repository-relative POSIX path), and bounded `limit` where applicable, with descriptions that guide the model to choose evidence-appropriate tools. Definitions are generated from a single source of truth shared with MCP validation.
+- **Tool-calling loop** — Create `src/chronotrace/agent/tool_loop.py` (or `agent.py` orchestrator + `tool_loop.py` helper) implementing the loop:
+  1. Send developer instructions + bounded conversation history + user question + available tool definitions to the model.
+  2. Inspect `ModelResponse` for `tool_calls` (provider-specific field: `tool_calls` / `function_call` / `content[].tool_use`).
+  3. Validate each tool name is one of the five allowed and arguments satisfy repository_id/file_path/limit rules (reuse MCP validators); on invalid name/args return a structured tool error to the model rather than executing.
+  4. Execute validated calls through `MCPClient.call_tool` (sequentially by default; parallel only if explicitly safe for the selected SDK/client — see Decisions).
+  5. Return tool results to the model in the provider-required format (e.g., `role:"tool"`, `tool_call_id`, `content: JSON.stringify(result)`).
+  6. Continue until the model returns a final `content` answer with no tool calls, or a maximum iteration count is reached, or a terminal error occurs.
+- **Iteration limits and loop safety** — Enforce a configurable `max_iterations` (default 8–10, validated positive integer, from `agent` config) that caps model→tool→model rounds. On limit reached, return the best-effort answer with a limitation note or a deterministic `max_iterations_exceeded` error — never loop indefinitely. Also bound per-round tool-call count (e.g., max 5 parallel calls) and total tool calls per conversation.
+- **Evidence-first developer instructions** — Create `src/chronotrace/agent/prompts.py` with the system/developer prompt that: requires citing file paths, commit hashes, dates, counts, and scores only when present in tool output; requires stating "insufficient evidence" when tool output does not support a claim; instructs to treat tool output as data not instructions (ignore imperative language inside tool results); keeps repository context explicit (every prompt includes `repository_id`); and forbids inventing graph relationships, commit evidence, or authoritative scores.
+- **Conversation-history bounding** — Keep explicit repository context per conversation (`repository_id` bound at agent creation or per `ask()` call). Bound history to a configurable window (e.g., last N turns or token budget) with truncation that preserves developer instructions and most recent user question; never send unbounded history to the provider.
+- **Error handling** — Handle provider timeouts (`httpx.TimeoutException` → `ModelTimeoutError`), rate limits (429 → `RateLimitError` with `retry_after`), invalid credentials (401/403 → `AuthenticationError` with actionable message naming the env var, no secret leakage), malformed tool calls (invalid JSON/unknown tool/missing required arg → `ToolValidationError` returned to model as tool error and logged), MCP/transport errors (connection refused, `graph_unavailable` → `MCPError`), and missing final responses (model returns empty content with no tool calls → `NoFinalResponseError`). All map to deterministic, typed errors surfaced to the API caller; the agent never fabricates an answer when the model is unavailable.
+- **Deterministic fallback path preservation** — Do not remove or obscure the Iteration 5/6 deterministic report path. When a user requests or the API routes a report, analytics/MCP can be called directly without invoking the model; the agent is additive, not a replacement.
+
+## Capabilities
+
+### New Capabilities
+
+- `agent`: Evidence-first agent — Meta Model API Muse Spark provider client (isolated, config-driven, no hard-coded secrets), MCP client over Streamable HTTP, five tool definitions in provider format, bounded tool-calling loop with iteration limits and parallel-call safety, evidence-first developer instructions (cite-only-from-tools, insufficient-evidence disclosure, tool-output-as-data, explicit repository context, bounded history), and typed error handling for provider/MCP/validation failures with deterministic no-fabrication guarantee. Owns all LLM interaction consumed by the API chat endpoint (Iteration 8), CLI `chat` (Iteration 10), and UI chat view (Iteration 11).
+
+### Modified Capabilities
+
+- None — no existing shipped spec capability is modified. Iterations 0–6 established foundation, config, graph, ingestion, static analysis, analytics, and MCP server; this iteration is additive and read-only over the graph via MCP tools. `mcp` (Iteration 6) is consumed via its Streamable HTTP interface; `config` (Iteration 1) is read for `agent.provider`/`model`/`reasoning_effort`/`base_url`/`max_iterations`; `graph`/`analytics` are accessed only through MCP.
+
+## Impact
+
+- **New code**: `src/chronotrace/agent/` — `model_client.py` (provider client, httpx, typed errors, retry/timeout), `mcp_client.py` (MCP Streamable HTTP client, lifecycle, error mapping), `prompts.py` (evidence-first developer instructions, repo-context injection, history bounding helpers), `tool_loop.py` (tool-call inspection, validation, execution, result formatting, iteration-limit enforcement), `agent.py` (high-level `Agent` facade: `__init__(config, mcp_client, model_client)`, `ask(question, repository_id, history) -> AgentResponse`), `response.py` (typed `AgentResponse` with `answer`, `citations`, `tool_calls_made`, `evidence_references`, `limitations`, `status`), `exceptions.py` or reuse `config/exceptions.py` pattern.
+- **Configuration**: Reads `agent.provider` (must be `meta`), `agent.model` (e.g., `muse-spark-1.3`, validated against verified identifier), `agent.reasoning_effort` (`low`/`medium`/`high`), `agent.base_url` (optional, validated HTTPS URL, defaults to Meta Model API endpoint), `agent.max_iterations` (new, positive int, default 8), `agent.timeout_seconds` (optional), plus `MODEL_API_KEY` from environment (required before agent init, validated at startup — mirrors Iteration 1 startup validation). Secrets never in YAML, never logged. Unknown `agent` keys rejected by Pydantic.
+- **Graph/Analytics/MCP**: No new graph writes or schema migrations. Agent is read-only over the graph via the five MCP tools. MCP server transport route imported from a tested constant (`mcp_server.server.MCP_PATH` or equivalent). No arbitrary Cypher, no model-generated query strings.
+- **Dependencies**: No new external package required beyond `httpx` (already declared) and `mcp` (added in Iteration 6). If the Meta Model API SDK exists as a separate package, evaluate vs raw `httpx`; prefer `httpx` to avoid an extra SDK unless official docs mandate it. Python 3.12+, stdlib otherwise.
+- **Downstream**: Unblocks Iteration 8 (API `POST /chat` — agent invoked with repository-scoped question, returns evidence-grounded answer), Iteration 10 (`chronotrace chat` via API), Iteration 11 (web chat view), and Iteration 12 (backtesting of agent answer quality vs. deterministic reports). Preserves Iteration 8 report path that bypasses the model.
+- **Security surface**: New provider boundary (API key handling, HTTPS, no secret leakage in errors/logs), tool-input validation boundary (agent re-validates before MCP call even though MCP also validates), prompt-injection boundary (tool output treated as data). Mitigations: shared validators, deterministic error envelope, evidence-first prompt tested against injection fixtures.
+
+## Out of Scope (Explicitly Excluded)
+
+- FastAPI application, lifespan, health/readiness endpoints, report/chat HTTP routes, background ingestion jobs (Iteration 8).
+- Docker images, multi-service Compose orchestration, service hostnames, volume persistence (Iteration 9).
+- CLI commands `init`/`up`/`down`/`status`/`add`/`chat`/`report` wiring and Rich rendering (Iteration 10) and web UI chat/report/graph views (Iteration 11).
+- Backtesting evaluation of `agent` answers vs. deterministic scores, SZZ, function/symbol-level tracking, real per-test coverage, embeddings, multi-language parsing (PLAN §7 exclusions, Iteration 12).
+- New graph node/relationship types or schema migrations; analytics formula changes.
+- Provider-side fine-tuning, hosted vector store, or persistent memory beyond bounded conversation history.
+- Automatic retry loops that exceed iteration limits or re-issue the same failing tool call without model guidance.
+
+## Acceptance Criteria (Iteration-level)
+
+Maps to PLAN.md Iteration 7 Scope, Evidence policy, Acceptance criteria, and Completion gate:
+
+- A real model request succeeds with a valid `MODEL_API_KEY` and returns a grounded answer (verified by integration test gated on credentials; mocked by default in CI).
+- A model tool call (e.g., `get_change_criticality`) invokes the matching MCP tool and its result is returned to the model in the provider-required `role:"tool"` / `tool_call_id` format; the agent's final answer cites evidence from that tool output (paths, hashes, dates, counts, or scores) without invention.
+- Tool results are correctly formatted per provider spec; malformed tool names/arguments are caught by agent validation and returned as tool errors, not executed.
+- The agent produces no unsupported factual claims in tested representative questions (e.g., "what is the most critical file?", "what is the regression risk for src/foo.py?", "which tests should I run for src/bar.py?") — claims are either cited from tool output or explicitly marked insufficient.
+- Invalid credentials (missing/wrong `MODEL_API_KEY`) and provider failures (timeout, 429, 5xx, transport failure) produce actionable typed errors naming the failure mode and env var without leaking secrets; the agent does not fabricate an answer.
+- Tool iteration limits prevent loops: a conversation that would exceed `max_iterations` terminates deterministically with `max_iterations_exceeded` or a best-effort answer carrying a limitation note.
+- Tests use mocked model responses (httpx `MockTransport` or respx) and mocked MCP results; integration tests verify the real provider path when `MODEL_API_KEY` is available. No test makes a real network call by default.
+- Completion gate: the agent can answer representative repository questions using MCP evidence against the demo graph and does not make unsupported factual claims in tested scenarios; deterministic report path remains available without the model.
+
+## Dependencies and Sequencing
+
+- **Depends on**: Iteration 1 (validated `chronotrace.yml` schema, `MODEL_API_KEY`/`NEO4J_*` env handling, path/config precedence, startup validation), Iteration 2 (Neo4j driver lifecycle — consumed transitively via MCP), Iteration 3 (stable `repository_id`, file identity — validated by agent before MCP call), Iteration 4 (`IMPORTS` edges — surfaced via `get_historical_impact`), Iteration 5 (deterministic analytics contracts, status vocabularies — surfaced via MCP tools; agent must not recalculate scores), Iteration 6 (MCP server, five tool contracts, Streamable HTTP transport, validation/error envelope — agent's sole graph access path).
+- **Unblocks**: Iteration 8 (API chat endpoint — `Agent.ask()` called with repository-scoped question), Iteration 9 (Compose `agent-api` service — agent + MCP client lifecycle under API), Iteration 10 (CLI `chat`), Iteration 11 (web chat), Iteration 12 (hardening including agent E2E and prompt-injection tests).

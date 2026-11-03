@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chronotrace"
+version = "0.1.0"
+description = "Evidence-first codebase risk analysis"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer",
+    "rich",
+    "httpx",
+    "pyyaml",
+    "pydriller",
+    "neo4j",
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+chronotrace = "chronotrace.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [".venv", "myenv", "build", "dist", ".git", ".hg", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".fresh-venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+ignore_missing_imports = true
+warn_return_any = true

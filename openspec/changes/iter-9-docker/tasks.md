@@ -1,0 +1,40 @@
+# Tasks: Iteration 9 — Docker Images and Compose Deployment
+
+## 1. Backend Dockerfile and build hygiene
+
+- [ ] 1.1 Create `Dockerfile` with `python:3.12-slim` base, system deps (`git`, `curl`), cache-friendly `COPY` order, `pip install .`, non-root user, and `EXPOSE 8000 8001`; verify `docker build -t chronotrace:dev .` succeeds and `docker run --rm chronotrace:dev python -c "import chronotrace; print('ok')"` exits 0
+- [ ] 1.2 Add `.dockerignore` excluding `.env`, `.git`, `__pycache__`, `*.egg-info`, `.venv`, `myenv`, `build`, `dist`, `.pytest_cache`, `htmlcov`, `.mypy_cache`, `.ruff_cache`; verify `docker build -t chronotrace:dev .` context is small (`Sending build context` size drops) and `docker history chronotrace:dev` shows no `.env` or secret layer
+- [ ] 1.3 Verify image secret hygiene — run `docker history --no-trunc chronotrace:dev | rg -i "password|MODEL_API_KEY|secret"` finds zero hits and inspecting `docker inspect chronotrace:dev` shows no `Env` containing secret values; document the result in the PR description
+
+## 2. Neo4j Compose service hardening
+
+- [ ] 2.1 Rewrite `neo4j` service in `docker-compose.yml` to use `${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}` (remove hardcoded `neo4j/password`), keep `image: neo4j:5-community`, `ports 7474/7687`, and `neo4j_data`/`neo4j_logs` volumes; verify `docker compose config` renders with the env substitution and committed `docker-compose.yml` contains no literal password via `rg -n "password" docker-compose.yml`
+- [ ] 2.2 Add Docker health check for `neo4j` (`cypher-shell -u ... 'RETURN 1' || wget -qO- http://localhost:7474`) with `interval: 10s`, `timeout: 5s`, `retries: 10`, `start_period: 30s` and `restart: unless-stopped`; verify `docker compose up -d neo4j && docker inspect --format='{{.State.Health.Status}}' <neo4j-container>` eventually reports `healthy`
+- [ ] 2.3 Update `.env.example` with `NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`, `API_PORT`, `MCP_PORT`, `MODEL_API_KEY`, `MODEL_BASE_URL` placeholders and comments explaining Compose hostname vs localhost split; verify `cp .env.example .env` + editing produces a file that `docker compose config` can interpolate without errors
+
+## 3. Backend Compose services (agent-api and mcp-server)
+
+- [ ] 3.1 Add `agent-api` service to `docker-compose.yml` using `build: .`, `ports: ["${API_PORT:-8000}:8000"]`, `env_file: [.env]`, `environment: NEO4J_URI=bolt://neo4j:7687`, `MCP_SERVER_URL=http://mcp-server:8001/mcp`, `depends_on: neo4j: condition: service_healthy`, and health check `curl -f http://localhost:8000/health`; verify `docker compose config` shows the service and `docker compose up -d agent-api` starts it after `neo4j` is healthy
+- [ ] 3.2 Add `mcp-server` service sharing the same `build: .` with `command: ["python", "-m", "chronotrace.mcp_server.server", "--host", "0.0.0.0", "--port", "8001"]`, `ports: ["${MCP_PORT:-8001}:8001"]`, same `NEO4J_URI=bolt://neo4j:7687` env, `depends_on: neo4j: service_healthy`, and MCP health probe; verify `docker compose up -d mcp-server && curl http://localhost:8001/mcp` or equivalent MCP endpoint responds and `list_tools` returns five tools
+- [ ] 3.3 Verify single-image invariant — run `docker compose build && docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | rg chronotrace` shows one image ID backing both services or `docker compose config | rg "build:"` shows identical build contexts; include the digest/match output in the PR
+
+## 4. Networking, volumes, and persistence
+
+- [ ] 4.1 Ensure services share the default Compose network and inter-service DNS (`neo4j`) works — verify from inside `agent-api` via `docker compose exec agent-api getent hosts neo4j` or `python -c "import socket; socket.gethostbyname('neo4j')"` succeeds, and that host `curl http://localhost:8000/health` reaches the published API while container-to-container uses `bolt://neo4j:7687`
+- [ ] 4.2 Configure persistent volumes — keep `neo4j_data:/data` and `neo4j_logs:/logs`, add `chronotrace_data` (or documented bind mount) mounted into `agent-api`/`mcp-server` at the path matching `ProjectConfig.data_dir`/`repositories_dir` (`/app/data` or `/home/appuser/.chronotrace`); verify `docker compose config` lists the volumes and `docker volume ls | rg neo4j_data` shows the named volume after `up`
+- [ ] 4.3 Verify persistence survives recreation — run smoke: `docker compose up -d`, ingest or write a marker file into the app volume, `docker compose down`, `docker compose up -d`, then confirm the marker/graph data still exists via `docker compose exec neo4j cypher-shell "MATCH (r:Repository) RETURN count(r)"` or volume file check
+- [ ] 4.4 Handle volume permissions for non-root user — ensure `Dockerfile` creates and `chown`s the app data directory for `appuser`; verify a write to the mounted volume from inside the container succeeds without `permission denied`
+
+## 5. Secrets, hostname split, readiness gating, and lifecycle
+
+- [ ] 5.1 Enforce env-only secrets — ensure `Dockerfile` never `COPY .env`, `docker-compose.yml` uses `env_file: [.env]` + `${VAR}` references, and startup code (`validate_startup` / `verify_connectivity`) reads from env with redacted error messages; verify `rg -n "COPY.*\.env|\bARG\b.*PASSWORD|ARG.*API_KEY" Dockerfile` and `rg -n "password|MODEL_API_KEY" docker-compose.yml` show no literal secret embedding
+- [ ] 5.2 Document and validate hostname split — add comments in `docker-compose.yml` and `chronotrace.yml.example` stating `bolt://neo4j:7687` inside Compose vs `bolt://localhost:7687` for host runs and `http://localhost:8000` for host API; add a startup warning when a container detects `NEO4J_URI` containing `localhost`; verify the warning appears in `docker compose logs agent-api` when misconfigured
+- [ ] 5.3 Verify readiness gating — with `depends_on: service_healthy` on `neo4j`, confirm `GET http://localhost:8000/readiness` returns not-ready while `neo4j` is still `starting` and returns `ok` only after `neo4j` is `healthy`; if available, assert `docker compose ps` health columns reflect this ordering
+- [ ] 5.4 Verify graceful shutdown and log accessibility — confirm `docker compose logs -f` streams each service, and `docker compose down` exits containers with code 0 within the grace period while preserving `neo4j_data`; re-`up` and check data integrity
+
+## 6. Documentation, packaging, and smoke verification
+
+- [ ] 6.1 Document dev and published-image workflows in `README.md` (and optionally `docs/deployment.md` and `Makefile` `build`/`up`/`down`/`logs`/`smoke` targets) covering `docker build -t chronotrace:dev .`, `docker compose up --build -d`, `docker compose logs`, `docker compose down` vs `down -v`, and `ghcr.io`/tagged published image usage; verify the documented commands are runnable by copy-paste and include the hostname split note
+- [ ] 6.2 Ensure packaged Compose/Docker assets are locatable from an installed CLI — add `Dockerfile`, `docker-compose.yml`, `.env.example`, `chronotrace.yml.example` to package data (`[tool.setuptools.package-data]` or `MANIFEST.in`) or document `importlib.resources` lookup; verify after `pip install -e .` that `python -c "import importlib.resources; print(list(importlib.resources.files('chronotrace').iterdir()))"` or the helper can resolve the assets from an arbitrary cwd
+- [ ] 6.3 Full smoke test from clean state — run `cp .env.example .env && $EDITOR .env && docker compose down -v 2>/dev/null; docker compose up --build -d; until curl -f http://localhost:8000/health && curl -f http://localhost:8000/readiness; do sleep 2; done; docker compose logs --tail 20; docker compose down; docker compose up -d; verify data still present; docker compose down` and capture the exit codes; gate the iteration on this passing
+- [ ] 6.4 Harden `.gitignore` if needed and validate `openspec validate --strict` — ensure `.env` remains ignored, committed artifacts contain no secrets via `git ls-files | rg "^\.env$"` is false and `openspec validate --strict` passes for `iter-9-docker`; fix any reported warnings (purpose length, requirement descriptions, scenario WHEN/THEN)
