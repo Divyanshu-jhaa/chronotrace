@@ -35,6 +35,9 @@ chronotrace = "chronotrace.cli.main:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"chronotrace.graph.migrations" = ["*.cypher"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

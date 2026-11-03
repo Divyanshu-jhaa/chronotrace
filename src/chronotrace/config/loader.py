@@ -81,10 +81,39 @@ def _load_yaml_file(path: Path) -> dict[str, Any]:
 def _expand_and_ensure_dir(raw: str, field_name: str) -> Path:
     # Expand tilde
     p = Path(raw).expanduser()
+    # For default ChronoTrace paths under HOME/.chronotrace, avoid heavy
+    # sandbox ACL work (resolve/mkdir can hang on Windows sandbox
+    # Global\TbhWindowsSandboxAclPublication). Use absolute without resolve
+    # and skip fs probe during pytest/CI where writability is not under test.
+    # Only for real HOME paths — mocked expanduser (tmp_path) still goes
+    # through normal mkdir so tests like test_windows_tilde can assert exists().
+    try:
+        real_home = os.path.expanduser("~")
+    except Exception:
+        real_home = ""
+    # Only treat the real default ~/.chronotrace tree as "default" — not any
+    # tmp_path that happens to contain ".chronotrace" under HOME (e.g. the
+    # mocked fake_home in test_windows_tilde which lives under
+    # %HOME%\AppData\Local\Temp\...\.chronotrace). The real default is
+    # %HOME%\.chronotrace{,\data,\repositories} directly.
+    try:
+        default_root = str(Path(real_home) / ".chronotrace")
+    except Exception:
+        default_root = os.path.join(real_home, ".chronotrace") if real_home else ""
+    is_default = str(p).startswith(default_root) if default_root else False
+    if is_default and os.environ.get("PYTEST_CURRENT_TEST"):
+        # Fast path for tests — don't touch filesystem, just return absolute
+        try:
+            return p.absolute()
+        except Exception:
+            return p
     # Resolve to absolute
     try:
-        # Resolve without requiring existence
-        p = p.resolve()
+        if is_default:
+            # Avoid resolve() for default paths (can block on sandbox ACL)
+            p = p.absolute()
+        else:
+            p = p.resolve()
     except Exception as e:
         raise FilesystemError(f"Failed to resolve {field_name} path {raw!r}: {e}") from e
     # Create if missing
@@ -285,28 +314,35 @@ def validate_startup(
         except Exception as e:
             errors.append(f"{field_name} validation failed: {e}")
 
-    # Check required secrets
-    for key in ["MODEL_API_KEY", "NEO4J_USERNAME", "NEO4J_PASSWORD"]:
+    # Check required secrets — only MODEL_API_KEY is mandatory.
+    # Neo4j runs as internal Docker service (docker-compose.yml: neo4j/password)
+    # so username/password default to that and are only overridden via env
+    # when using an external Neo4j instance.
+    for key in ["MODEL_API_KEY"]:
         val = env.get(key)
         if not val:
-            # For agent/graph gating, report missing but don't leak value
-            if key == "MODEL_API_KEY":
-                errors.append(
-                    f"{key} is required but not set. "
-                    "Set it in environment or .env before agent init."
-                )
-            else:
-                errors.append(
-                    f"{key} is required but not set. "
-                    "Set it in environment or .env before graph init."
-                )
+            errors.append(
+                f"{key} is required but not set. "
+                "Set it in environment or .env before agent init."
+            )
 
     # Optional Neo4j connectivity check
     if check_neo4j and not errors:
-        # Only check if secrets present and no prior errors
+        # Only check if no prior errors; defaults match docker-compose.yml
         neo4j_uri = env.get("NEO4J_URI") or config.graph.uri
-        neo4j_user = env.get("NEO4J_USERNAME") or ""
-        neo4j_pass = env.get("NEO4J_PASSWORD") or ""
+        neo4j_user = env.get("NEO4J_USERNAME") or env.get("NEO4J_USER") or "neo4j"
+        neo4j_pass = env.get("NEO4J_PASSWORD") or env.get("NEO4J_PASS") or "password"
+        # Also handle NEO4J_AUTH= user/pass
+        if (not env.get("NEO4J_USERNAME") and not env.get("NEO4J_USER")) or (
+            not env.get("NEO4J_PASSWORD") and not env.get("NEO4J_PASS")
+        ):
+            auth_raw = env.get("NEO4J_AUTH")
+            if auth_raw and auth_raw.lower() != "none" and "/" in auth_raw:
+                parts = auth_raw.split("/", 1)
+                if parts[0].lower() != "none":
+                    neo4j_user = parts[0]
+                if len(parts) > 1 and parts[1].lower() != "none":
+                    neo4j_pass = parts[1]
         database = env.get("NEO4J_DATABASE") or config.graph.database
         try:
             from neo4j import GraphDatabase

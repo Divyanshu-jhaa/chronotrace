@@ -14,13 +14,15 @@ def test_missing_model_key(tmp_path):
 
 
 def test_missing_neo4j(tmp_path):
+    # Neo4j is now zero-config (defaults to docker-compose neo4j/password),
+    # so missing NEO4J env is OK when only MODEL_API_KEY is present.
     p = tmp_path / "cfg.yml"
     p.write_text("version: 1\n")
     env = {"MODEL_API_KEY": "key", "NEO4J_USERNAME": "", "NEO4J_PASSWORD": ""}
     cfg = load_config(config_path=p, env=env)
     report = validate_startup(cfg, env=env, check_neo4j=False)
-    assert not report["ok"]
-    assert any("NEO4J" in e for e in report["errors"])
+    assert report["ok"]
+    assert not any("NEO4J" in e for e in report["errors"])
 
 
 def test_filesystem_ok(tmp_path):
