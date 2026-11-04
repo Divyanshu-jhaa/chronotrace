@@ -204,6 +204,24 @@ class GraphGateway:
             repository_id, source_id, target_id, count, weight, confidence
         )
 
+    def replace_imports(
+        self,
+        repository_id: str,
+        edges: list[tuple[str, str] | dict[str, Any] | list[Any]],
+        batch_size: int | None = None,
+    ) -> int:
+        """Replace IMPORTS edges for repository_id with replace semantics.
+
+        Delegates to ImportGraphRepository for delete-then-merge idempotency.
+        Supports tuple or dict edges with optional language.
+        """
+        from .repositories.import_repo import ImportGraphRepository
+
+        repo = ImportGraphRepository(self._driver)
+        if batch_size is not None:
+            return repo.replace_imports(repository_id, edges, batch_size=batch_size)
+        return repo.replace_imports(repository_id, edges)
+
     # Batch relationship helpers
     def upsert_relationships(
         self, kind: str, repository_id: str, rows: list[dict[str, Any]]
