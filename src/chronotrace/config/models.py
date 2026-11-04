@@ -258,6 +258,26 @@ class McpConfig(BaseModel):
         return v
 
 
+class ApiConfig(BaseModel):
+    """Validated API server configuration.
+
+    - host: bind address, default 127.0.0.1
+    - port: 1..65535, default 8000
+    Unknown keys rejected via extra="forbid".
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    host: str = Field(default="127.0.0.1", description="API bind host")
+    port: int = Field(default=8000, description="API bind port 1..65535", ge=1, le=65535)
+
+    @field_validator("host")
+    @classmethod
+    def _check_host(cls, v):
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError("api.host must be a non-empty string")
+        return v.strip()
+
+
 class ChronoTraceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     version: Literal[1] = Field(default=1)
@@ -266,6 +286,7 @@ class ChronoTraceConfig(BaseModel):
     graph: GraphConfig = Field(default_factory=GraphConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     mcp: McpConfig = Field(default_factory=McpConfig)
+    api: ApiConfig = Field(default_factory=ApiConfig)
 
     # Resolved absolute paths (populated by loader after validation)
     # We store them as private attributes? For now keep as properties.
