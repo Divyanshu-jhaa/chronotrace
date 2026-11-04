@@ -270,8 +270,8 @@ def test_failure_isolation_concurrent_gather():
 
     try:
         asyncio.run(_run())
-    except PermissionError:
-        pytest.skip("Windows sandbox blocks socketpair for asyncio Proactor loop")
+    except (PermissionError, OSError) as e:
+        pytest.skip(f"Windows sandbox blocks asyncio loop ({type(e).__name__}: {e})")
 
 
 def test_failure_isolation_one_tool_error_does_not_crash_others():

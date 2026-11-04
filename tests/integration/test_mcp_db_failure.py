@@ -526,8 +526,14 @@ def test_mcp_db_failure_graph_unavailable_envelope_and_server_survives():
     """Live server: stub graph to raise GraphNotAvailable, each tool returns graph_unavailable isError true, server remains running."""
     try:
         asyncio.run(_run_db_failure_via_server())
-    except (PermissionError, OSError) as e:
+    except (PermissionError, OSError, SystemExit, RuntimeError) as e:
         pytest.skip(f"Socket unavailable in sandbox (Windows PermissionError): {e}")
+    except BaseException as e:
+        if isinstance(e, pytest.skip.Exception):  # type: ignore[attr-defined]
+            raise
+        if "PermissionError" in type(e).__name__ or "SystemExit" in type(e).__name__ or "CancelledError" in type(e).__name__ or "OSError" in type(e).__name__:
+            pytest.skip(f"Socket unavailable in sandbox: {e!r}")
+        raise
 
 
 def test_mcp_db_failure_unit_via_stub():

@@ -150,6 +150,36 @@ Prompt is a plain Python string constant plus a builder `build_messages(reposito
 
 **Rationale:** Preserves the single-validation-point invariant from Iteration 1 and keeps config precedence (CLI flag > env > yaml > default) intact.
 
+### Verified Meta Model API Contract — Task 1.1 (2026-11-04)
+
+Verified against current official docs at https://dev.meta.ai/docs (checked 2026-11-04;
+retry if stale). Values are pinned in `src/chronotrace/agent/model_client.py` header,
+`AgentConfig` defaults/validators, and `chronotrace.yml` `agent.model`; code fails
+closed on mismatch. Live smoke test gated on `MODEL_API_KEY` (see `model_client.py`
+header and `tests/integration/agent/test_model_smoke.py` — skipped without key).
+
+| Property | Verified value | Source |
+|---|---|---|
+| Base URL | `https://api.meta.ai/v1` | `docs/quickstart` “Base URL: https://api.meta.ai/v1” |
+| Chat endpoint | `POST https://api.meta.ai/v1/chat/completions` (relative `/chat/completions` when `base_url` is `https://api.meta.ai/v1`; absolute `/v1/chat/completions`) | `docs/protocols/chat-completions`, `docs/overview` |
+| Also available | `POST /v1/responses` (Responses API) and `POST /v1/messages` (Messages API at host `https://api.meta.ai`) | `docs/protocols/responses`, `docs/protocols/messages` — ChronoTrace uses Chat Completions |
+| Auth header | `Authorization: Bearer <MODEL_API_KEY>` (secret env-only, never YAML/log) | `docs/authentication`, `docs/quickstart` |
+| Model identifier | `muse-spark-1.3` (pattern `^muse-spark-1\.3(-contributor)?$`; 1M context) | `docs/models`, `chronotrace.yml` `agent.model` |
+| Tool request | `tools: [{type:"function", function:{name,description,parameters}}]` | `docs/tool-calling` |
+| Tool response | `choices[0].message.tool_calls: [{id, type:"function", function:{name,arguments}}]` | `docs/tool-calling` |
+| Tool result message | `{role:"tool", tool_call_id:"<id>", content:"<JSON string>"}` | `docs/tool-calling` |
+| `reasoning_effort` (Chat Completions) | top-level `reasoning_effort`; `reasoning.effort` in Responses API; provider values `none\|minimal\|low\|medium\|high\|xhigh\|max` (`none` unsupported for Muse Spark → 400) | `docs/reasoning`, `docs/protocols/chat-completions` |
+| ChronoTrace `reasoning_effort` | validated `low\|medium\|high`, default `medium` | `AgentConfig` validator |
+
+Notes:
+- Tool JSON shape and `reasoning_effort` controls were verified against the
+  Chat Completions tool-calling and reasoning pages; Responses/Message
+  variants are documented for completeness but not used by ChronoTrace.
+- Contributor variant `muse-spark-1.3-contributor` is accepted by the model
+  validator alongside `muse-spark-1.3`; other identifiers are rejected.
+- If docs change, update this section, `model_client.py` header/constants,
+  and `AgentConfig` validators, then gate the live smoke test on `MODEL_API_KEY`.
+
 ## Risks / Trade-offs
 
 - [Stale provider docs assumption] → Mitigation: verify base URL/endpoint/auth header/model identifier/tool format/reasoning controls against current Meta Model API docs as the first implementation step; pin verified values and run a manual live check gated on `MODEL_API_KEY`; fail closed on mismatch.

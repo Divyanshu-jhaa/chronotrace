@@ -8,7 +8,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .validators import (
+    validate_agent_base_url,
+    validate_agent_history_limit,
+    validate_agent_max_iterations,
+    validate_agent_model,
     validate_agent_provider,
+    validate_agent_timeout_seconds,
     validate_granularity,
     validate_graph_provider,
     validate_language,
@@ -146,20 +151,81 @@ class GraphConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
+    """Validated agent configuration for Meta Model API Muse Spark.
+
+    All fields have documented defaults and Pydantic validation.
+
+    - provider: must be "meta"
+    - model: validated against verified identifier
+      muse-spark-1.3 (pattern muse-spark-1.3(-contributor)?)
+    - base_url: optional HTTPS URL, defaults to
+      https://api.meta.ai/v1 (verified Meta endpoint)
+    - reasoning_effort: low|medium|high, default medium
+    - max_iterations: int 1..32, default 8
+    - timeout_seconds: float >=1, default 30
+    - history_limit: int >=1, default 10
+    - parallel_tool_calls: bool, default false
+
+    Unknown keys are rejected via extra="forbid".
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True)
-    provider: str = Field(default="meta")
-    model: str = Field(default="muse-spark-1.3")
-    reasoning_effort: str = Field(default="medium")
+    provider: str = Field(default="meta", description="Agent provider, must be 'meta'")
+    model: str = Field(
+        default="muse-spark-1.3",
+        description="Muse Spark model identifier (verified: muse-spark-1.3)",
+    )
+    base_url: str = Field(
+        default="https://api.meta.ai/v1",
+        description="Optional HTTPS URL, defaults to verified Meta endpoint https://api.meta.ai/v1",
+    )
+    reasoning_effort: str = Field(default="medium", description="Reasoning effort: low|medium|high")
+    max_iterations: int = Field(default=8, description="Max iterations 1..32")
+    timeout_seconds: float = Field(default=30.0, description="Provider timeout seconds >=1")
+    history_limit: int = Field(default=10, description="Bounded history limit >=1")
+    parallel_tool_calls: bool = Field(default=False, description="Parallel tool calls when safe")
 
     @field_validator("provider")
     @classmethod
     def _check_provider(cls, v):
         return validate_agent_provider(v)
 
+    @field_validator("model")
+    @classmethod
+    def _check_model(cls, v):
+        return validate_agent_model(v)
+
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, v):
+        return validate_agent_base_url(v)
+
     @field_validator("reasoning_effort")
     @classmethod
     def _check_effort(cls, v):
         return validate_reasoning_effort(v)
+
+    @field_validator("max_iterations", mode="before")
+    @classmethod
+    def _check_max_iterations(cls, v):
+        return validate_agent_max_iterations(v)
+
+    @field_validator("timeout_seconds", mode="before")
+    @classmethod
+    def _check_timeout(cls, v):
+        return validate_agent_timeout_seconds(v)
+
+    @field_validator("history_limit", mode="before")
+    @classmethod
+    def _check_history_limit(cls, v):
+        return validate_agent_history_limit(v)
+
+    @field_validator("parallel_tool_calls", mode="before")
+    @classmethod
+    def _check_parallel(cls, v):
+        if not isinstance(v, bool):
+            raise ValueError(f"agent.parallel_tool_calls must be a boolean, got {v!r}")
+        return v
 
 
 class McpConfig(BaseModel):
