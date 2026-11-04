@@ -1,0 +1,1193 @@
+{
+  "repository_id": "R-fixture",
+  "half_life_days": 30.0,
+  "now": "2024-04-01T00:00:00+00:00",
+  "files": [
+    {
+      "path": "a.py",
+      "canonical_path": "a.py",
+      "current_path": "a.py",
+      "id": "R-fixture:a.py",
+      "repository_id": "R-fixture",
+      "is_test": false,
+      "language": "python"
+    },
+    {
+      "path": "b.py",
+      "canonical_path": "b.py",
+      "current_path": "b.py",
+      "id": "R-fixture:b.py",
+      "repository_id": "R-fixture",
+      "is_test": false,
+      "language": "python"
+    },
+    {
+      "path": "c.py",
+      "canonical_path": "c.py",
+      "current_path": "c.py",
+      "id": "R-fixture:c.py",
+      "repository_id": "R-fixture",
+      "is_test": false,
+      "language": "python"
+    },
+    {
+      "path": "tests/test_a.py",
+      "canonical_path": "tests/test_a.py",
+      "current_path": "tests/test_a.py",
+      "id": "R-fixture:tests/test_a.py",
+      "repository_id": "R-fixture",
+      "is_test": true,
+      "language": "python"
+    }
+  ],
+  "commits": [
+    {
+      "hash": "1111111111111111111111111111111111111111",
+      "date": "2024-01-01T00:00:00+00:00",
+      "message": "feat: initial commit",
+      "is_fix": false,
+      "fix_reason": null,
+      "author": "alice@example.com",
+      "modified": [
+        "a.py",
+        "b.py"
+      ]
+    },
+    {
+      "hash": "2222222222222222222222222222222222222222",
+      "date": "2024-02-01T00:00:00+00:00",
+      "message": "fix: handle edge case in a",
+      "is_fix": true,
+      "fix_reason": "pattern='fix' matched fix",
+      "author": "bob@example.com",
+      "modified": [
+        "a.py",
+        "c.py",
+        "tests/test_a.py"
+      ]
+    },
+    {
+      "hash": "3333333333333333333333333333333333333333",
+      "date": "2024-03-02T00:00:00+00:00",
+      "message": "refactor: update b and c",
+      "is_fix": false,
+      "fix_reason": null,
+      "author": "alice@example.com",
+      "modified": [
+        "a.py",
+        "b.py",
+        "c.py"
+      ]
+    },
+    {
+      "hash": "4444444444444444444444444444444444444444",
+      "date": "2024-03-25T00:00:00+00:00",
+      "message": "fix: regression in a b c coupling",
+      "is_fix": true,
+      "fix_reason": "pattern='fix' matched fix",
+      "author": "carol@example.com",
+      "modified": [
+        "a.py",
+        "b.py",
+        "c.py"
+      ]
+    },
+    {
+      "hash": "5555555555555555555555555555555555555555",
+      "date": "2024-04-01T00:00:00+00:00",
+      "message": "feat: polish a and b",
+      "is_fix": false,
+      "fix_reason": null,
+      "author": "bob@example.com",
+      "modified": [
+        "a.py",
+        "b.py",
+        "tests/test_a.py"
+      ]
+    }
+  ],
+  "co_changes": [
+    {
+      "source": "a.py",
+      "target": "b.py",
+      "count": 4,
+      "weight": 4.0,
+      "confidence": 0.8
+    },
+    {
+      "source": "a.py",
+      "target": "c.py",
+      "count": 3,
+      "weight": 3.0,
+      "confidence": 0.6
+    },
+    {
+      "source": "a.py",
+      "target": "tests/test_a.py",
+      "count": 2,
+      "weight": 2.0,
+      "confidence": 0.4
+    },
+    {
+      "source": "b.py",
+      "target": "c.py",
+      "count": 2,
+      "weight": 2.0,
+      "confidence": 0.4
+    },
+    {
+      "source": "b.py",
+      "target": "tests/test_a.py",
+      "count": 1,
+      "weight": 1.0,
+      "confidence": 0.2
+    },
+    {
+      "source": "c.py",
+      "target": "tests/test_a.py",
+      "count": 1,
+      "weight": 1.0,
+      "confidence": 0.2
+    }
+  ],
+  "imports": [
+    {
+      "source": "b.py",
+      "target": "a.py"
+    },
+    {
+      "source": "tests/test_a.py",
+      "target": "a.py"
+    }
+  ],
+  "criticality": {
+    "a.py": {
+      "status": "insufficient_history",
+      "score": 1.0,
+      "components": {
+        "churn": {
+          "raw": 8.252099152520831,
+          "normalized": 1.0,
+          "weighted": 0.3,
+          "score": 0.3
+        },
+        "fix": {
+          "raw": 1.1006671609508558,
+          "normalized": 1.0,
+          "weighted": 0.3,
+          "score": 0.3
+        },
+        "cochange": {
+          "raw": 9.0,
+          "normalized": 1.0,
+          "weighted": 0.25,
+          "score": 0.25
+        },
+        "fan_in": {
+          "raw": 2.0,
+          "normalized": 1.0,
+          "weighted": 0.15,
+          "score": 0.15
+        }
+      },
+      "repo_stats": {
+        "churn": {
+          "min": 2.9480861068677027,
+          "max": 8.252099152520831,
+          "count": 4.0
+        },
+        "fix": {
+          "min": 0.25,
+          "max": 1.1006671609508558,
+          "count": 4.0
+        },
+        "cochange": {
+          "min": 4.0,
+          "max": 9.0,
+          "count": 4.0
+        },
+        "fan_in": {
+          "min": 0.0,
+          "max": 2.0,
+          "count": 4.0
+        }
+      },
+      "weights": {
+        "churn": 0.3,
+        "fix": 0.3,
+        "cochange": 0.25,
+        "fan_in": 0.15
+      },
+      "evidence": {
+        "commits": [
+          {
+            "hash": "1111111111111111111111111111111111111111",
+            "date": "2024-01-01T00:00:00+00:00"
+          },
+          {
+            "hash": "2222222222222222222222222222222222222222",
+            "date": "2024-02-01T00:00:00+00:00"
+          },
+          {
+            "hash": "3333333333333333333333333333333333333333",
+            "date": "2024-03-02T00:00:00+00:00"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444",
+            "date": "2024-03-25T00:00:00+00:00"
+          },
+          {
+            "hash": "5555555555555555555555555555555555555555",
+            "date": "2024-04-01T00:00:00+00:00"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "a.py",
+            "target": "b.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 4
+          },
+          {
+            "source": "a.py",
+            "target": "c.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 3
+          },
+          {
+            "source": "a.py",
+            "target": "tests/test_a.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 2
+          },
+          {
+            "source": "b.py",
+            "target": "a.py",
+            "kind": "IMPORTS",
+            "count": null
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "a.py",
+            "kind": "IMPORTS",
+            "count": null
+          }
+        ]
+      },
+      "limitations": {
+        "shallow_history": true,
+        "commit_count": 5,
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    },
+    "b.py": {
+      "status": "insufficient_history",
+      "score": 0.5226649916636216,
+      "components": {
+        "churn": {
+          "raw": 5.791586677034406,
+          "normalized": 0.5361036154496409,
+          "weighted": 0.16083108463489226,
+          "score": 0.16083108463489226
+        },
+        "fix": {
+          "raw": 0.8506671609508557,
+          "normalized": 0.7061130234290978,
+          "weighted": 0.2118339070287293,
+          "score": 0.2118339070287293
+        },
+        "cochange": {
+          "raw": 7.0,
+          "normalized": 0.6,
+          "weighted": 0.15,
+          "score": 0.15
+        },
+        "fan_in": {
+          "raw": 0.0,
+          "normalized": 0.0,
+          "weighted": 0.0,
+          "score": 0.0
+        }
+      },
+      "repo_stats": {
+        "churn": {
+          "min": 2.9480861068677027,
+          "max": 8.252099152520831,
+          "count": 4.0
+        },
+        "fix": {
+          "min": 0.25,
+          "max": 1.1006671609508558,
+          "count": 4.0
+        },
+        "cochange": {
+          "min": 4.0,
+          "max": 9.0,
+          "count": 4.0
+        },
+        "fan_in": {
+          "min": 0.0,
+          "max": 2.0,
+          "count": 4.0
+        }
+      },
+      "weights": {
+        "churn": 0.3,
+        "fix": 0.3,
+        "cochange": 0.25,
+        "fan_in": 0.15
+      },
+      "evidence": {
+        "commits": [
+          {
+            "hash": "1111111111111111111111111111111111111111",
+            "date": "2024-01-01T00:00:00+00:00"
+          },
+          {
+            "hash": "3333333333333333333333333333333333333333",
+            "date": "2024-03-02T00:00:00+00:00"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444",
+            "date": "2024-03-25T00:00:00+00:00"
+          },
+          {
+            "hash": "5555555555555555555555555555555555555555",
+            "date": "2024-04-01T00:00:00+00:00"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "b.py",
+            "target": "a.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 4
+          },
+          {
+            "source": "b.py",
+            "target": "c.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 2
+          },
+          {
+            "source": "b.py",
+            "target": "tests/test_a.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 1
+          }
+        ]
+      },
+      "limitations": {
+        "shallow_history": true,
+        "commit_count": 5,
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    },
+    "c.py": {
+      "status": "insufficient_history",
+      "score": 0.4404311343988444,
+      "components": {
+        "churn": {
+          "raw": 3.6629103212077894,
+          "normalized": 0.1347704479961482,
+          "weighted": 0.04043113439884446,
+          "score": 0.04043113439884446
+        },
+        "fix": {
+          "raw": 1.1006671609508558,
+          "normalized": 1.0,
+          "weighted": 0.3,
+          "score": 0.3
+        },
+        "cochange": {
+          "raw": 6.0,
+          "normalized": 0.4,
+          "weighted": 0.1,
+          "score": 0.1
+        },
+        "fan_in": {
+          "raw": 0.0,
+          "normalized": 0.0,
+          "weighted": 0.0,
+          "score": 0.0
+        }
+      },
+      "repo_stats": {
+        "churn": {
+          "min": 2.9480861068677027,
+          "max": 8.252099152520831,
+          "count": 4.0
+        },
+        "fix": {
+          "min": 0.25,
+          "max": 1.1006671609508558,
+          "count": 4.0
+        },
+        "cochange": {
+          "min": 4.0,
+          "max": 9.0,
+          "count": 4.0
+        },
+        "fan_in": {
+          "min": 0.0,
+          "max": 2.0,
+          "count": 4.0
+        }
+      },
+      "weights": {
+        "churn": 0.3,
+        "fix": 0.3,
+        "cochange": 0.25,
+        "fan_in": 0.15
+      },
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222",
+            "date": "2024-02-01T00:00:00+00:00"
+          },
+          {
+            "hash": "3333333333333333333333333333333333333333",
+            "date": "2024-03-02T00:00:00+00:00"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444",
+            "date": "2024-03-25T00:00:00+00:00"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "c.py",
+            "target": "a.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 3
+          },
+          {
+            "source": "c.py",
+            "target": "b.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 2
+          },
+          {
+            "source": "c.py",
+            "target": "tests/test_a.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 1
+          }
+        ]
+      },
+      "limitations": {
+        "shallow_history": true,
+        "commit_count": 5,
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    },
+    "tests/test_a.py": {
+      "status": "insufficient_history",
+      "score": 0.0,
+      "components": {
+        "churn": {
+          "raw": 2.9480861068677027,
+          "normalized": 0.0,
+          "weighted": 0.0,
+          "score": 0.0
+        },
+        "fix": {
+          "raw": 0.25,
+          "normalized": 0.0,
+          "weighted": 0.0,
+          "score": 0.0
+        },
+        "cochange": {
+          "raw": 4.0,
+          "normalized": 0.0,
+          "weighted": 0.0,
+          "score": 0.0
+        },
+        "fan_in": {
+          "raw": 0.0,
+          "normalized": 0.0,
+          "weighted": 0.0,
+          "score": 0.0
+        }
+      },
+      "repo_stats": {
+        "churn": {
+          "min": 2.9480861068677027,
+          "max": 8.252099152520831,
+          "count": 4.0
+        },
+        "fix": {
+          "min": 0.25,
+          "max": 1.1006671609508558,
+          "count": 4.0
+        },
+        "cochange": {
+          "min": 4.0,
+          "max": 9.0,
+          "count": 4.0
+        },
+        "fan_in": {
+          "min": 0.0,
+          "max": 2.0,
+          "count": 4.0
+        }
+      },
+      "weights": {
+        "churn": 0.3,
+        "fix": 0.3,
+        "cochange": 0.25,
+        "fan_in": 0.15
+      },
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222",
+            "date": "2024-02-01T00:00:00+00:00"
+          },
+          {
+            "hash": "5555555555555555555555555555555555555555",
+            "date": "2024-04-01T00:00:00+00:00"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "tests/test_a.py",
+            "target": "a.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 2
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "b.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 1
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "c.py",
+            "kind": "CO_CHANGED_WITH",
+            "count": 1
+          }
+        ]
+      },
+      "limitations": {
+        "shallow_history": true,
+        "commit_count": 5,
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence",
+          "insufficient history \u2014 2 commits touching target, fewer than 3 observations"
+        ]
+      }
+    }
+  },
+  "regression": {
+    "a.py": {
+      "status": "ok",
+      "fix_commits": [
+        {
+          "hash": "2222222222222222222222222222222222222222",
+          "date": "2024-02-01T00:00:00+00:00",
+          "message": "fix: handle edge case in a",
+          "fix_reason": "pattern='fix' matched fix"
+        },
+        {
+          "hash": "4444444444444444444444444444444444444444",
+          "date": "2024-03-25T00:00:00+00:00",
+          "message": "fix: regression in a b c coupling",
+          "fix_reason": "pattern='fix' matched fix"
+        }
+      ],
+      "related_files": [
+        {
+          "path": "c.py",
+          "count": 2,
+          "confidence": 1.0
+        },
+        {
+          "path": "b.py",
+          "count": 1,
+          "confidence": 0.5
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 1,
+          "confidence": 0.5
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "historical regression evidence \u2014 ranked by fix-commit co-occurrence and directional confidence P(file|target), not a future-bug probability"
+        ]
+      }
+    },
+    "b.py": {
+      "status": "ok",
+      "fix_commits": [
+        {
+          "hash": "4444444444444444444444444444444444444444",
+          "date": "2024-03-25T00:00:00+00:00",
+          "message": "fix: regression in a b c coupling",
+          "fix_reason": "pattern='fix' matched fix"
+        }
+      ],
+      "related_files": [
+        {
+          "path": "a.py",
+          "count": 1,
+          "confidence": 1.0
+        },
+        {
+          "path": "c.py",
+          "count": 1,
+          "confidence": 1.0
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "4444444444444444444444444444444444444444"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "historical regression evidence \u2014 ranked by fix-commit co-occurrence and directional confidence P(file|target), not a future-bug probability"
+        ]
+      }
+    },
+    "c.py": {
+      "status": "ok",
+      "fix_commits": [
+        {
+          "hash": "2222222222222222222222222222222222222222",
+          "date": "2024-02-01T00:00:00+00:00",
+          "message": "fix: handle edge case in a",
+          "fix_reason": "pattern='fix' matched fix"
+        },
+        {
+          "hash": "4444444444444444444444444444444444444444",
+          "date": "2024-03-25T00:00:00+00:00",
+          "message": "fix: regression in a b c coupling",
+          "fix_reason": "pattern='fix' matched fix"
+        }
+      ],
+      "related_files": [
+        {
+          "path": "a.py",
+          "count": 2,
+          "confidence": 1.0
+        },
+        {
+          "path": "b.py",
+          "count": 1,
+          "confidence": 0.5
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 1,
+          "confidence": 0.5
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "historical regression evidence \u2014 ranked by fix-commit co-occurrence and directional confidence P(file|target), not a future-bug probability"
+        ]
+      }
+    },
+    "tests/test_a.py": {
+      "status": "ok",
+      "fix_commits": [
+        {
+          "hash": "2222222222222222222222222222222222222222",
+          "date": "2024-02-01T00:00:00+00:00",
+          "message": "fix: handle edge case in a",
+          "fix_reason": "pattern='fix' matched fix"
+        }
+      ],
+      "related_files": [
+        {
+          "path": "a.py",
+          "count": 1,
+          "confidence": 1.0
+        },
+        {
+          "path": "c.py",
+          "count": 1,
+          "confidence": 1.0
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "historical regression evidence \u2014 ranked by fix-commit co-occurrence and directional confidence P(file|target), not a future-bug probability"
+        ]
+      }
+    }
+  },
+  "impact": {
+    "a.py": {
+      "status": "ok",
+      "importers": [
+        "b.py",
+        "tests/test_a.py"
+      ],
+      "dependencies": [],
+      "co_changed": [
+        {
+          "path": "b.py",
+          "count": 4,
+          "confidence": 0.8,
+          "potential_hidden_coupling": false,
+          "note": null
+        },
+        {
+          "path": "c.py",
+          "count": 3,
+          "confidence": 0.6,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 2,
+          "confidence": 0.4,
+          "potential_hidden_coupling": false,
+          "note": null
+        }
+      ],
+      "hidden_couplings": [
+        {
+          "path": "c.py",
+          "count": 3
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "1111111111111111111111111111111111111111"
+          },
+          {
+            "hash": "2222222222222222222222222222222222222222"
+          },
+          {
+            "hash": "3333333333333333333333333333333333333333"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444"
+          },
+          {
+            "hash": "5555555555555555555555555555555555555555"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "a.py",
+            "target": "b.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "a.py",
+            "target": "c.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "a.py",
+            "target": "tests/test_a.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "b.py",
+            "target": "a.py",
+            "kind": "IMPORTS"
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "a.py",
+            "kind": "IMPORTS"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ],
+        "shallow_history": true
+      }
+    },
+    "b.py": {
+      "status": "ok",
+      "importers": [],
+      "dependencies": [
+        "a.py"
+      ],
+      "co_changed": [
+        {
+          "path": "a.py",
+          "count": 4,
+          "confidence": 0.8,
+          "potential_hidden_coupling": false,
+          "note": null
+        },
+        {
+          "path": "c.py",
+          "count": 2,
+          "confidence": 0.4,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 1,
+          "confidence": 0.2,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        }
+      ],
+      "hidden_couplings": [
+        {
+          "path": "c.py",
+          "count": 2
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 1
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "1111111111111111111111111111111111111111"
+          },
+          {
+            "hash": "3333333333333333333333333333333333333333"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444"
+          },
+          {
+            "hash": "5555555555555555555555555555555555555555"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "b.py",
+            "target": "a.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "b.py",
+            "target": "c.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "b.py",
+            "target": "tests/test_a.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "b.py",
+            "target": "a.py",
+            "kind": "IMPORTS"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ],
+        "shallow_history": true
+      }
+    },
+    "c.py": {
+      "status": "ok",
+      "importers": [],
+      "dependencies": [],
+      "co_changed": [
+        {
+          "path": "a.py",
+          "count": 3,
+          "confidence": 0.6,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        },
+        {
+          "path": "b.py",
+          "count": 2,
+          "confidence": 0.4,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 1,
+          "confidence": 0.2,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        }
+      ],
+      "hidden_couplings": [
+        {
+          "path": "a.py",
+          "count": 3
+        },
+        {
+          "path": "b.py",
+          "count": 2
+        },
+        {
+          "path": "tests/test_a.py",
+          "count": 1
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222"
+          },
+          {
+            "hash": "3333333333333333333333333333333333333333"
+          },
+          {
+            "hash": "4444444444444444444444444444444444444444"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "c.py",
+            "target": "a.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "c.py",
+            "target": "b.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "c.py",
+            "target": "tests/test_a.py",
+            "kind": "CO_CHANGED_WITH"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence",
+          "no static import relationship resolved \u2014 absence of an edge does not prove absence of a dependency (dynamic imports, see Iteration 4 limitations)",
+          "no static relationship resolved \u2014 absence of an edge does not prove absence of a dependency"
+        ],
+        "shallow_history": true
+      }
+    },
+    "tests/test_a.py": {
+      "status": "ok",
+      "importers": [],
+      "dependencies": [
+        "a.py"
+      ],
+      "co_changed": [
+        {
+          "path": "a.py",
+          "count": 2,
+          "confidence": 0.4,
+          "potential_hidden_coupling": false,
+          "note": null
+        },
+        {
+          "path": "b.py",
+          "count": 1,
+          "confidence": 0.2,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        },
+        {
+          "path": "c.py",
+          "count": 1,
+          "confidence": 0.2,
+          "potential_hidden_coupling": true,
+          "note": "observed association not proven dependency"
+        }
+      ],
+      "hidden_couplings": [
+        {
+          "path": "b.py",
+          "count": 1
+        },
+        {
+          "path": "c.py",
+          "count": 1
+        }
+      ],
+      "evidence": {
+        "commits": [
+          {
+            "hash": "2222222222222222222222222222222222222222"
+          },
+          {
+            "hash": "5555555555555555555555555555555555555555"
+          }
+        ],
+        "relationships": [
+          {
+            "source": "tests/test_a.py",
+            "target": "a.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "b.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "c.py",
+            "kind": "CO_CHANGED_WITH"
+          },
+          {
+            "source": "tests/test_a.py",
+            "target": "a.py",
+            "kind": "IMPORTS"
+          }
+        ]
+      },
+      "limitations": {
+        "warnings": [
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ],
+        "shallow_history": true
+      }
+    }
+  },
+  "test_reco": {
+    "a.py": {
+      "status": "ok",
+      "candidates": [
+        {
+          "path": "tests/test_a.py",
+          "score": 5.5,
+          "reasons": [
+            "naming_convention",
+            "imports_target",
+            "co_change:2",
+            "fix_commit:1"
+          ],
+          "evidence": {
+            "imports_target": true,
+            "co_change_count": 2,
+            "fix_commit_count": 1,
+            "naming_match": true
+          },
+          "imports_target": true,
+          "naming_match": true,
+          "co_change_count": 2,
+          "fix_count": 1
+        }
+      ],
+      "limitations": {
+        "warnings": [
+          "no claim of real coverage \u2014 recommendations are heuristic suggestions, not measured coverage or guaranteed relevance",
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    },
+    "b.py": {
+      "status": "ok",
+      "candidates": [
+        {
+          "path": "tests/test_a.py",
+          "score": 1.5,
+          "reasons": [
+            "co_change:1"
+          ],
+          "evidence": {
+            "imports_target": false,
+            "co_change_count": 1,
+            "fix_commit_count": 0,
+            "naming_match": false
+          },
+          "imports_target": false,
+          "naming_match": false,
+          "co_change_count": 1,
+          "fix_count": 0
+        }
+      ],
+      "limitations": {
+        "warnings": [
+          "no claim of real coverage \u2014 recommendations are heuristic suggestions, not measured coverage or guaranteed relevance",
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    },
+    "c.py": {
+      "status": "ok",
+      "candidates": [
+        {
+          "path": "tests/test_a.py",
+          "score": 2.5,
+          "reasons": [
+            "co_change:1",
+            "fix_commit:1"
+          ],
+          "evidence": {
+            "imports_target": false,
+            "co_change_count": 1,
+            "fix_commit_count": 1,
+            "naming_match": false
+          },
+          "imports_target": false,
+          "naming_match": false,
+          "co_change_count": 1,
+          "fix_count": 1
+        }
+      ],
+      "limitations": {
+        "warnings": [
+          "no claim of real coverage \u2014 recommendations are heuristic suggestions, not measured coverage or guaranteed relevance",
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    },
+    "tests/test_a.py": {
+      "status": "ok",
+      "candidates": [],
+      "limitations": {
+        "warnings": [
+          "no claim of real coverage \u2014 recommendations are heuristic suggestions, not measured coverage or guaranteed relevance",
+          "shallow history \u2014 5 commits available, results have low confidence"
+        ]
+      }
+    }
+  }
+}

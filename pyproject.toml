@@ -42,6 +42,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+norecursedirs = ["tests/fixtures"]
 
 [tool.coverage.run]
 source = ["src"]
