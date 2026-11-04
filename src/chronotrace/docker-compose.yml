@@ -1,0 +1,107 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: chronotrace-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}
+      NEO4J_dbms_default__database: ${NEO4J_DATABASE:-neo4j}
+      NEO4J_dbms_security_auth__enabled: "true"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER:-neo4j} -p ${NEO4J_PASSWORD:-password} -d ${NEO4J_DATABASE:-neo4j} 'RETURN 1' || wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - chronotrace-net
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chronotrace:dev
+    container_name: chronotrace-mcp
+    command: ["python", "-m", "chronotrace.mcp_server", "--host", "0.0.0.0", "--port", "8001"]
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8001"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - chronotrace_data:/app/data
+      - ./chronotrace.yml:/app/chronotrace.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8001/health > /dev/null || curl -s http://localhost:8001/mcp > /dev/null || wget --no-verbose --tries=1 --spider http://localhost:8001/health || wget --no-verbose --tries=1 --spider http://localhost:8001/mcp || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - chronotrace-net
+
+  agent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chronotrace:dev
+    container_name: chronotrace-api
+    command: ["uvicorn", "chronotrace.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+      MODEL_API_KEY: ${MODEL_API_KEY:-}
+      MODEL_BASE_URL: ${MODEL_BASE_URL:-}
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      mcp-server:
+        condition: service_healthy
+    volumes:
+      - chronotrace_data:/app/data
+      - ./chronotrace.yml:/app/chronotrace.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - chronotrace-net
+
+networks:
+  chronotrace-net:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  chronotrace_data:
+    driver: local

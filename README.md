@@ -72,11 +72,69 @@ Tool definitions: five MCP tools from `chronotrace.mcp_server.tools.schemas.CANO
 
 Deterministic report path remains available without the model: `AnalyticsService.get_change_criticality(...)` and MCP `get_change_criticality` return structured `status`/`evidence`/`limitations` without `Agent`/`ModelClient`.
 
+## Docker — Build & Compose
+
+Single image `chronotrace:dev` serves both `agent-api` (8000) and `mcp-server` (8001); `neo4j:5-community` provides the graph. No secret is baked into the image or `docker-compose.yml`.
+
+### Hostname split — driver (Bolt) vs Browser (HTTP)
+
+- **Driver (code):** **Inside Compose** `agent-api`/`mcp-server` → `bolt://neo4j:7687` (Compose DNS). `docker-compose.yml` sets `NEO4J_URI=bolt://neo4j:7687`. **On the host** `bolt://localhost:7687` (published `7687:7687`). `chronotrace.yml` keeps `bolt://localhost:7687`; Compose overrides at runtime. Do not use `http://` for driver — `neo4j.GraphDatabase.driver` will fail.
+- **Browser (humans):** `http://localhost:7474` on host (published `7474:7474`), `http://neo4j:7474` inside Compose. Open `http://localhost:7474` in your browser to see the graph. Misconfigure driver to `bolt://localhost:7687` inside a container → `GET /ready` stays `503 not_ready` with `neo4j unavailable`.
+
+### Development (from source)
+
+```bash
+cp .env.example .env   # fill NEO4J_PASSWORD, MODEL_API_KEY
+docker build -t chronotrace:dev .
+docker compose --env-file .env up -d --build
+docker compose ps            # neo4j healthy before agent-api/mcp-server
+docker compose logs -f agent-api
+curl -f http://localhost:8000/health   # 200 {status:"ok"} even when neo4j down
+curl -f http://localhost:8000/ready    # 200 ready only when neo4j healthy
+curl -f http://localhost:8001/health   # mcp health (stub) or /mcp endpoint
+# open browser to see graph:
+open http://localhost:7474  # Neo4j Browser — login with NEO4J_USER/PASSWORD from .env
+```
+
+Published image (no build):
+```bash
+docker pull ghcr.io/<org>/chronotrace:0.1.0
+docker compose --env-file .env up -d
+```
+
+### Compose file — `docker-compose.yml`
+
+`neo4j` `image: neo4j:5-community`, `NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}`, healthcheck `cypher-shell RETURN 1` / `wget http://localhost:7474`, `restart: unless-stopped`, volumes `neo4j_data:/data` + `neo4j_logs:/logs` (survives `down` without `-v`). `agent-api` and `mcp-server` share `build: .` → `image: chronotrace:dev`, `env_file: .env`, `depends_on: neo4j: condition: service_healthy` (mcp before api), healthchecks `curl -f http://localhost:8000/health` / `8001/health`, `restart: unless-stopped`, `chronotrace_data:/app/data` + `./chronotrace.yml:/app/chronotrace.yml:ro` on bridge `chronotrace-net`.
+
+### Volumes & shutdown
+
+- `docker volume ls` shows `neo4j_data`, `neo4j_logs`, `chronotrace_data` after `docker compose down` (no `-v`).
+- `docker compose down` within stop grace (10s) drains jobs, `driver.close()` + `mcp.aclose()`, exits 0, no graph corruption. Logs via `docker compose logs agent-api` / `docker logs chronotrace-api`.
+
+### Secrets via env (never baked)
+
+`.env.example` lists placeholders (`NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`, `MODEL_API_KEY`, `MCP_PORT`, `API_PORT`, `MODEL_BASE_URL`) with hostname comments; `docker-compose.yml` references only `${VAR}`. `docker history chronotrace:dev` and `docker inspect` show no secret, no `.env`.
+
+### Installed CLI asset location
+
+When installed via `pip install .`, `chronotrace` locates bundled `docker-compose.yml`/`Dockerfile` via `src/chronotrace/cli/compose.py:get_compose_path()` using `importlib.resources` → `src/chronotrace/` → `cwd` fallback, without assuming `cwd` is the repo root.
+
+### Makefile
+
+```bash
+make docker-build   # docker build -t chronotrace:dev .
+make docker-up      # docker compose --env-file .env up -d --build
+make docker-down    # docker compose down
+make docker-ps      # docker compose ps
+make docker-logs    # docker compose logs -f
+```
+
 ## Other docs
 
 - Ingestion deep-dive: [`src/chronotrace/ingestion/README.md`](./src/chronotrace/ingestion/README.md) (transport formats, canonicalization vectors, filtering, change handling, labeling)
 - Graph schema: `src/chronotrace/graph/`
 - Agent layer: [`src/chronotrace/agent/README.md`](./src/chronotrace/agent/README.md) (provider contract, prompts, loop, error handling)
+- API: [`src/chronotrace/api/README.md`](./src/chronotrace/api/README.md)
 
 ## Development
 

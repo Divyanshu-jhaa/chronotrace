@@ -39,10 +39,12 @@ chronotrace = "chronotrace.cli.main:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
+"chronotrace" = ["py.typed", "docker-compose.yml", "Dockerfile", ".dockerignore"]
 "chronotrace.graph.migrations" = ["*.cypher"]
 "chronotrace.mcp_server" = ["*.py", "README.md", "py.typed"]
 "chronotrace.mcp_server.tools" = ["*.py", "py.typed"]
 "chronotrace.core.graph.repositories" = ["*.py"]
+"chronotrace.api" = ["*.py", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

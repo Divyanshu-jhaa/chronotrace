@@ -39,6 +39,11 @@ analysis:
 
 graph:
   provider: neo4j
+  # Driver (Bolt) vs Browser (HTTP) split:
+  # - Driver (Python neo4j.GraphDatabase.driver): bolt://localhost:7687 on host, bolt://neo4j:7687 inside Compose (Compose DNS).
+  #   Compose overrides via NEO4J_URI env. Do not use http:// for driver — it will fail.
+  # - Browser (UI): http://localhost:7474 on host, http://neo4j:7474 inside Compose (published 7474:7474).
+  #   Open http://localhost:7474 in a browser to see the graph (Browser), use bolt:// for code.
   uri: "bolt://localhost:7687"
   database: neo4j
   batch_size: 500

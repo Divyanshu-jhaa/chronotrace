@@ -820,26 +820,60 @@ def create_mcp_server(
     return server
 
 
-def _cli() -> None:
+def _cli(argv: list[str] | None = None) -> None:
     import argparse
+    import logging
+    import os
     import sys
 
+    logger = logging.getLogger(__name__)
     parser = argparse.ArgumentParser(description="ChronoTrace MCP server (Streamable HTTP)")
-    parser.add_argument("--host", default=None, help="Host to bind")
-    parser.add_argument("--port", type=int, default=None, help="Port to bind")
-    parser.add_argument("--transport", default=None, choices=["streamable-http", "sse", "stdio"])
-    args = parser.parse_args()
+    parser.add_argument("--host", default=os.getenv("MCP_HOST", "127.0.0.1"), help="Host to bind")
+    parser.add_argument("--port", type=int, default=int(os.getenv("MCP_PORT", "8001")), help="Port to bind")
+    parser.add_argument("--transport", default="streamable-http", choices=["streamable-http", "sse", "stdio"])
+    args = parser.parse_args(argv)
 
-    if "--help" in sys.argv or "-h" in sys.argv:
-        parser.print_help()
-        return
-    from chronotrace.config import load_config  # type: ignore
+    try:
+        from chronotrace.config import load_config  # type: ignore
 
-    config = load_config()
-    host = args.host or getattr(getattr(config, "mcp", None), "host", "127.0.0.1")
-    port = args.port or getattr(getattr(config, "mcp", None), "port", 8001)
-    print(f"ChronoTrace MCP server @ http://{host}:{port}{MCP_HTTP_PATH} (transport={getattr(getattr(config, 'mcp', None), 'transport', 'streamable-http')})")
-    print("Use create_mcp_server(config) to start programmatically.")
+        config = load_config()
+    except Exception as exc:
+        logger.error("Failed to load config: %s", exc)
+        sys.exit(1)
+
+    try:
+        server = create_mcp_server(config=config)
+    except Exception as exc:
+        logger.error("Failed to create MCP server: %s", exc)
+        sys.exit(1)
+
+    # Run via SDK's run/serve or stub's uvicorn
+    try:
+        from chronotrace.mcp_server.server import _StubMCPServer as _Stub
+
+        if isinstance(server, _Stub):
+            import uvicorn
+
+            app = server.streamable_http_app()
+            if app is not None:
+                logger.info("Starting stub MCP HTTP app on %s:%s", args.host, args.port)
+                uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+                return
+        else:
+            logger.info("Starting MCP server on %s:%s (%s)", args.host, args.port, args.transport)
+            try:
+                server.run(transport=args.transport, host=args.host, port=args.port)
+            except TypeError:
+                server.run(host=args.host, port=args.port, transport=args.transport)
+            return
+        if hasattr(server, "serve"):
+            server.serve(host=args.host, port=args.port, transport=args.transport)
+            return
+    except KeyboardInterrupt:
+        raise
+    except Exception as exc:
+        logger.error("MCP server failed: %s", exc)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

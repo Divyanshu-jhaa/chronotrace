@@ -1,0 +1,37 @@
+# Secrets and env
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+
+# Python cache/artifacts
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+*.egg-info/
+build/
+dist/
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+myenv/
+.venv
+myenv
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.agents/
+
+# Logs and data (host mounts, not needed in image)
+*.log
