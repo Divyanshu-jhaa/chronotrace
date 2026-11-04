@@ -162,6 +162,36 @@ class AgentConfig(BaseModel):
         return validate_reasoning_effort(v)
 
 
+class McpConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    host: str = Field(default="127.0.0.1")
+    port: int = Field(default=8001)
+    transport: str = Field(default="streamable-http")
+
+    @field_validator("host")
+    @classmethod
+    def _check_host(cls, v):
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError("mcp.host must be a non-empty string")
+        return v.strip()
+
+    @field_validator("port")
+    @classmethod
+    def _check_port(cls, v):
+        if not isinstance(v, int) or isinstance(v, bool):
+            raise ValueError(f"mcp.port must be an integer, got {v!r}")
+        if v < 0 or v > 65535:
+            raise ValueError(f"mcp.port must be 0-65535, got {v}")
+        return v
+
+    @field_validator("transport")
+    @classmethod
+    def _check_transport(cls, v):
+        if v not in ("streamable-http", "sse", "stdio"):
+            raise ValueError(f"mcp.transport must be streamable-http|sse|stdio, got {v!r}")
+        return v
+
+
 class ChronoTraceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     version: Literal[1] = Field(default=1)
@@ -169,6 +199,7 @@ class ChronoTraceConfig(BaseModel):
     analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     graph: GraphConfig = Field(default_factory=GraphConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    mcp: McpConfig = Field(default_factory=McpConfig)
 
     # Resolved absolute paths (populated by loader after validation)
     # We store them as private attributes? For now keep as properties.

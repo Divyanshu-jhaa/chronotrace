@@ -21,6 +21,7 @@ dependencies = [
     "python-dotenv",
     "tree-sitter>=0.21",
     "tree-sitter-language-pack>=0.4",
+    "mcp>=1.9",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +40,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "chronotrace.graph.migrations" = ["*.cypher"]
+"chronotrace.mcp_server" = ["*.py", "README.md", "py.typed"]
+"chronotrace.mcp_server.tools" = ["*.py", "py.typed"]
+"chronotrace.core.graph.repositories" = ["*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -66,3 +70,11 @@ python_version = "3.12"
 mypy_path = "src"
 ignore_missing_imports = true
 warn_return_any = true
+
+[[tool.mypy.overrides]]
+module = "chronotrace.mcp_server.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+ignore_errors = true
